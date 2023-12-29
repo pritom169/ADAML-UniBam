@@ -9,7 +9,7 @@ average_showertime <- mean(shower_data$Showertime)
 variance_showertime <- var(shower_data$Showertime)
 
 # 3. Compare the mean showertime with median.
-median_showertime <- median(data$Showertime)
+median_showertime <- median(shower_data$Showertime)
 cat("Average Showertime:", average_showertime, "\n")
 cat("Median Showertime:", median_showertime, "\n")
 
@@ -21,7 +21,7 @@ standard_deviation <- sd(shower_data$Volume)
 # that divides.a dataset into equal-sized portions. The most commonly used quantiles are the 
 # median (which divides the data into two halves) and quartiles (which divide the data into 
 # four quarters). However, quantile() can be used to compute any desired quantile.
-quantile_data <- quantile(data$Showertime)
+quantile_data <- quantile(shower_data$Showertime)
 # In order to access the first quantile we need to use this
 # Accessing the first element.
 cat(quantile_data[1])
@@ -38,12 +38,12 @@ range(shower_data$Volume)
 
 #### dplyr 1
 library(dplyr)
-library(weathermetrics)
 # 8. Select all the showers from Hoursehold "6395" and assign these to varaible "a".
 a <- filter(shower_data, Hh_ID == 6395)
 
 # 9. Order the showers of household "6395" by the recorded Volume and assign these
 # these to variable "b".
+# Arrange sortes the data by volume.
 b <- arrange(a, Volume)
 
 # 10. Select all the showers with the exception of Household "6395" and "5307" and
@@ -76,7 +76,7 @@ measures <- summarise(grouped_showers, meanDuration = mean(Showertime),
 
 #### dplyr 3
 # Use piping (the symbol %>% ) to solve the following exercises:
-# 14. Calculate for each household/device the average shower volume, the average shower
+#14. Calculate for each household/device the average shower volume, the average shower
 # temperatuyre and average shower duration.
 measures <- shower_data %>% group_by(Hh_ID) %>%
   summarise(meanDuration = mean(Showertime),
@@ -87,9 +87,12 @@ measures <- shower_data %>% group_by(Hh_ID) %>%
 moreThan50 <- shower_data %>% group_by(Hh_ID) %>%
   summarise(n = n()) %>% filter(n > 50)
 
+# What n = n() does here is that, it generates the number of datas are in a particular
+# data group.
+
 #16. Calculate the average number of recorded showers per group.
 avgNumberOfShowers <- shower_data %>% group_by(Hh_ID, group) %>%
-  summarise(n = dplyr::n()) %>%
+  summarise(n = dplyr::n())
   group_by(group) %>%
   summarise(grpmean = mean(n))
 
