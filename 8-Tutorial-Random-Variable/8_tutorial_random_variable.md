@@ -27,7 +27,6 @@ c. c = 3*b +1 = {10, 22, 25, 28, 40}; mean=25, median=25, variance=93.6, sd=9.67
    <img src="Problem-3cd.png" alt="Image Description" style="width:50%;height:auto;"> <br>
 
 
-
 4. The annual electricity consumption of two-person households of a given neighborhood
    follows (approximately) a normal distribution with µ=3500 kWh and σ=2000 kWh. 4000
    persons live in the neighborhood under study.
