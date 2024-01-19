@@ -1,0 +1,233 @@
+---
+title: "Mazumder_2153166_ADAML_1"
+author: "Pritom Mazumder"
+date: "2024-01-14"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+# Read the survey data file
+data <- read.csv2("Shower_data.csv")
+#load and prepare survey dataset
+survey <- read.csv2("Shower_survey_data.csv")
+
+# 1. Combine the data set
+combined_dataset <- dplyr::inner_join(data, survey)
+
+# 2. Separate the baseline phase
+baseline_phase <- combined_dataset %>%
+  filter(Shower >= 1 & Shower <= 10)
+```
+
+# Question a
+
+#### Question to answer
+
+Use this formula to check whether real-time feedback significantly decreases the average energy consumption per shower.
+
+#### Hypotheses
+
+**H0**: There is no significant difference in the average energy consumption per shower between the group with real-time feedback and the group without feedback.
+
+**H1**: Real-time feedback has a significant impact on reducing the average energy consumption per shower.
+
+#### Solution
+
+1.  Remove the group 1 and 2 from the dataset, as they are control group.
+2.  Calculate the energy for the remainning data points.
+3.  Devide the data into two groups. First one from shower 1-10 and the other the rest.
+4.  Now for each group calculate the average energy per shower by grouping through Hh_ID.
+5.  Perform a T-test
+
+```{r Qa}
+# 1. Remove the group 1 and 2 from the dataset, as they are control group.
+filtered_data <- data %>%
+  filter(!(group %in% c(1, 2)))
+
+# 2. Calculate the energy for the remaining data points.
+filtered_data$Energy <- filtered_data$Volume * ((filtered_data$Avgtemperature - 12) * 0.65) * (4.184/3600)
+
+# 3. Divide the data into two groups. First one from shower 1-10 and the other the rest.
+shower_1_to_10 <- filtered_data %>%
+  filter(Shower >= 1 & Shower <= 10)
+
+shower_above_10 <- filtered_data %>%
+  filter(Shower > 10)
+
+# 4. Now for each group calculate the average energy per shower by grouping through Hh_ID.
+avg_energy_shower_1_to_10 <- shower_1_to_10 %>%
+  group_by(Hh_ID) %>%
+  summarize(AvgEnergyPerShower_1_to_10 = mean(Energy))
+
+avg_energy_shower_above_10 <- shower_above_10 %>%
+  group_by(Hh_ID) %>%
+  summarize(AvgEnergyPerShower_Above_10 = mean(Energy))
+
+# 5. Perform a T-test
+result_a <- t.test(
+  avg_energy_shower_1_to_10$AvgEnergyPerShower_1_to_10,
+  avg_energy_shower_above_10$AvgEnergyPerShower_Above_10
+)
+```
+
+#### Result
+
+With an alpha level of 0.05, we can reject H0. Real-time feedback has a significant impact on reducing the average energy consumption per shower.
+
+# Question b
+
+#### Question to answer
+
+It often seems that young people are more aware of the environmental impact of their actions than older people and therefore may consume fewer resources by default: For this reason, check whether the baseline energy consumption of young people (20-29 years old) is statistically significantly different from the baseline consumption of older people. Describe the results.
+
+#### Hypotheses
+
+**H0**: The baseline energy consumption of young people (20-29 years old) is not statistically significantly different from the baseline consumption of older people.
+
+**H1**: The baseline energy consumption of young people (20-29 years old) is statistically significantly different from the baseline consumption of older people.
+
+#### Solution
+
+1.  Calculate the energy consumption.
+2.  Create a variable to distinguish between young and old people.
+3.  Apply the t-test.
+
+```{r Qb}
+
+# 1. Calculate the energy consumption
+baseline_phase$Energy <- baseline_phase$Volume * ((baseline_phase$Avgtemperature - 12) * 0.65) * (4.184/3600)
+
+# 2. Create a variable to distinguish between young and old people
+baseline_phase <- baseline_phase %>% dplyr::mutate(isYoung = ifelse(alter %in% c("20-29"), TRUE, FALSE))
+
+# 3. Apply the t-test 
+result_b <- t.test(baseline_phase %>% dplyr::filter(isYoung) %>% dplyr::pull(Energy),
+       baseline_phase %>% dplyr::filter(!isYoung) %>% dplyr::pull(Energy))
+```
+
+#### Result
+
+With an alpha level of 0.05, we can reject H0. The baseline energy consumption of young people (20-29 years old) is statistically significantly different from the baseline consumption of older people.
+
+# Question c
+
+#### Question to answer
+
+Does the gender of the participants influence the average shower volume of the users during the baseline phase (column "gesl" of the survey data)?
+
+#### Hypotheses
+
+**H0**: The average shower volume during the baseline phase is not statistically significantly different between genders.
+
+**H1**: The average shower volume during the baseline phase is statistically significantly different between genders.
+
+#### Solution
+
+1.  Calculate the average shower volume per household_id and gender
+2.  Subset the data for male and female participants during the baseline phase
+3.  Perform a two-sample t-test
+
+```{r Qc}
+# 1. Calculate the average shower volume per household_id and gender
+avg_shower_per_household <- aggregate(Volume ~ Hh_ID + gesl, data = baseline_phase, FUN = mean)
+
+# 2. Subset the data for male and female participants during the baseline phase
+male_data <- avg_shower_per_household[avg_shower_per_household$gesl == 'männlich', 'Volume']
+female_data <- avg_shower_per_household[avg_shower_per_household$gesl == 'weiblich', 'Volume']
+
+# 3. Perform a two-sample t-test
+result_c <- t.test(male_data, female_data)
+```
+
+#### Result
+
+With an alpha level of 0.05, we cannot reject the null hypothesis. There is no significant difference in average shower volume between genders during baseline phase.
+
+# Question d
+
+#### Question to answer
+
+Political decision-makers may find it very interesting to see which demographic groups save consumption when targeted by (real-time) feedback. Test whether study participants with a monthly income of 9000 Swiss francs or more show similar water consumption changes (possibly savings) as less wealthy ones. Remove participants who have not indicated their salary from the test. What do you observe?
+
+#### Hypotheses
+
+**H0**: The water consumption changes are not statistically significantly different between participants with a monthly income below 9000 Swiss francs and those with 9000 Swiss francs or more.
+
+**H1**: The water consumption changes are statistically significantly different between participants with a monthly income below 9000 Swiss francs and those with 9000 Swiss francs or more.
+
+#### Solution
+
+1.  Remove rows with 'Keine Angabe' in the 'einkommen' column.
+2.  Filter data by group (3, 4, 5, and 6) and 'Shower' values over 10 (Since real-time feedback is targeted).
+3.  Subset the data for participants with income of 9000 CHF or more into one. Rest of salaries into another.
+4.  Perform a two-sample t-test
+
+```{r Qd}
+# 1. Remove rows with 'Keine Angabe' in the 'einkommen' column
+combined_dataset <- combined_dataset[combined_dataset$einkommen != 'Keine Angabe', ]
+
+# 2. Filter data by group (3, 4, 5, and 6) and 'Shower' values over 10 (Since real-time feedback is targeted)
+filtered_data <- combined_dataset[combined_dataset$group %in% c(3, 4, 5, 6) & combined_dataset$Shower >= 10, ]
+
+# 3. Subset the data for participants with income of 9000 CHF or more into one. Rest of salaries into another.
+lower_income_categories <- c('< 3000 Fr.', '3000 - 3999 Fr.', '4000 - 4999 Fr.', 
+                             '5000 - 5999 Fr.', '6000 - 6999 Fr.', '7000 - 7999 Fr.', 
+                             '8000 - 8999 Fr.')
+lower_income_data <- filtered_data[filtered_data$einkommen %in% lower_income_categories, 'Volume']
+higher_income_data <- filtered_data[!(filtered_data$einkommen %in% lower_income_categories), 'Volume']
+
+# 4. Perform a two-sample t-test
+result_d <- t.test(lower_income_data, higher_income_data)
+```
+
+#### Result
+
+With an alpha level of 0.05, we can reject the null hypothesis. There is a significant difference in water consumption changes between income groups.
+
+# Question e
+
+#### Question to answer
+
+Energy consumption can be reduced by reducing the time per shower, the flow rate, by lowering the hot water temperature or by stopping the shower when applying shampoo. What seems to be the preferred strategy of the users?
+
+#### Hypotheses
+
+**H0**: There is no significant correlation between energy consumption during showers (represented by "Energy") and the factors of shower duration ("Showertime"), flow rate ("Flowrate"), hot water temperature ("Avgtemperature"), and stopping the shower during shampoo application ("Breaktime").
+
+**H1**: There is a significant correlation between energy consumption during showers and at least one of the following factors: shower duration ("Showertime"), flow rate ("Flowrate"), hot water temperature ("Avgtemperature"), or stopping the shower during shampoo application ("Breaktime").
+
+#### Solution
+
+1.  Add the Energy consumed for every shower.
+2.  Calculate the correlation matrix.
+3.  Extract the correlation coefficients.
+4.  Create a data frame for plotting.
+5.  Plot the correlation coefficients.
+
+```{r Qe}
+# 1. Add the Energy consumed for every shower.
+combined_dataset$Energy <- combined_dataset$Volume * ((combined_dataset$Avgtemperature - 12) * 0.65) * (4.184/3600)
+
+# 2. Calculate the correlation matrix
+cor_matrix <- cor(combined_dataset[c("Energy", "Showertime", "Flowrate", "Avgtemperature", "Breaktime")])
+
+# 3. Extract the correlation coefficients
+cor_energy <- cor_matrix["Energy", c("Showertime", "Flowrate", "Avgtemperature", "Breaktime")]
+
+# 4. Create a data frame for plotting
+cor_data <- data.frame(Factors = names(cor_energy), Correlation = cor_energy)
+
+# 5. Plot the correlation coefficients
+library(ggplot2)
+ggplot(cor_data, aes(x = Factors, y = Correlation)) +
+  geom_bar(stat = "identity", fill = "blue", alpha = 0.7) +
+  labs(title = "Correlation with Energy Consumption",
+       x = "Factors",
+       y = "Correlation Coefficient") +
+  theme_minimal()
+```
+
+#### Result
+
+If we set the border of coefficient at 0.05, we can infer that the duration of each shower (Showertime), the rate of water flow (Flowrate), and the water temperature (Avgtemperature) exhibit positive correlations with average energy consumption. Among these factors, the time per shower demonstrates the strongest positive correlation with energy consumption. Conversely, the duration of shampooing (Breaktime) shows a negative correlation with energy consumption. Therefore, the preferred strategy will be to reduce the time per shower.
